@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="280" height="400" viewBox="0 0 280 400" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <clipPath id="Blank_Full_Clip">
+      <rect x="0" y="0" width="280" height="400" rx="16" ry="16"/>
+    </clipPath>
+  </defs>
+  <g id="Blank_Card_Frame" clip-path="url(#Blank_Full_Clip)">
+    <rect x="0" y="0" width="280" height="400" fill="#1a0a22" stroke="#e6a5ff" stroke-width="4" rx="16" ry="16"/>
+    <rect id="Get_Image_here" x="15" y="15" width="250" height="250" fill="#2b003b"/>
+  </g>
+</svg>

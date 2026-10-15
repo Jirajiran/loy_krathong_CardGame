@@ -1,0 +1,15 @@
+# IDE / agent (not part of the shipped game)
+.cursor/
+AgentSkill.txt
+
+# Animate / Flash authoring sources (keep locally if needed; not for GitHub)
+*.fla
+*.xfl
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local Deploy→Asset junction/copy (ship uses repo-root Asset/ or link at deploy time)
+Deploy/Asset/

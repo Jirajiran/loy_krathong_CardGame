@@ -1,0 +1,1706 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loy Krathong — พิมพ์การ์ด A4</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f4f0e8;
+    --panel: #fff;
+    --line: #d4cfc4;
+    --accent: #b8860b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: "Sarabun", "Tahoma", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .toolbar {
+    flex-shrink: 0;
+    z-index: 30;
+    background: #1e293b; color: #e2e8f0;
+    padding: 10px 14px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  .toolbar a { color: #fbbf24; }
+  .toolbar button, .toolbar label.btn {
+    border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    font-weight: 700; font-size: 13px; background: #fbbf24; color: #1a1a1a;
+  }
+  .toolbar button.ghost { background: #334155; color: #e2e8f0; }
+  .toolbar .meta { font-size: 12px; color: #94a3b8; margin-left: auto; }
+  .layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) 1fr;
+    gap: 12px;
+    padding: 12px;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; overflow: auto; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+  }
+  .panel h2 { margin: 0 0 8px; font-size: 15px; }
+  .hint { font-size: 12px; color: #64748b; margin-bottom: 10px; line-height: 1.4; }
+  .settings-box {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+  }
+  .settings-box h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+  }
+  .settings-box label {
+    display: block;
+    font-size: 11px;
+    color: #475569;
+    margin-bottom: 6px;
+  }
+  .settings-box input[type="number"],
+  .settings-box input[type="text"],
+  .settings-box select {
+    width: 100%;
+    font: inherit;
+    font-size: 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 7px;
+    margin-top: 2px;
+    background: #fff;
+  }
+  .settings-box .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .settings-box .check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 11px;
+    color: #334155;
+    margin: 6px 0;
+    cursor: pointer;
+  }
+  .settings-box .check input { margin-top: 2px; }
+  .settings-box .hidden { display: none !important; }
+  main.sheets-wrap {
+    min-height: 0;
+    height: 100%;
+    overflow: auto;
+  }
+  .card-row {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: #fafafa;
+  }
+  .card-row.active { outline: 2px solid var(--accent); }
+  .card-row .top {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 6px;
+  }
+  .card-row .top strong { flex: 1; font-size: 13px; }
+  .card-row input, .card-row select, .card-row textarea {
+    width: 100%; font: inherit; font-size: 12px;
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px;
+    margin-bottom: 4px;
+  }
+  .card-row textarea {
+    min-height: 64px; resize: vertical;
+    line-height: 1.35;
+    font-family: "Sarabun", "Tahoma", monospace;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .qty { width: 56px !important; }
+  .btn-del {
+    border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer;
+    font-size: 11px; font-weight: 700; background: #fee2e2; color: #991b1b;
+    flex-shrink: 0;
+  }
+  .btn-del:hover { background: #fecaca; }
+  .btn-add-bottom {
+    width: 100%; margin-top: 4px; border: 1px dashed #b8860b;
+    border-radius: 10px; padding: 10px 12px; cursor: pointer;
+    font-weight: 700; font-size: 13px; background: #fffbeb; color: #92400e;
+  }
+  .btn-add-bottom:hover { background: #fef3c7; }
+  .field-label {
+    display: block; font-size: 11px; color: #64748b; margin: 2px 0 3px;
+  }
+  .qty-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .qty-wrap .field-label { margin: 0; }
+  .preview-slot {
+    width: 48px; height: 68px; border-radius: 4px; overflow: hidden;
+    background: #ddd; flex-shrink: 0;
+  }
+  .preview-slot img, .preview-slot svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #sheets { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .a4 {
+    width: 210mm;
+    height: 297mm;
+    background: white;
+    box-shadow: 0 4px 24px rgba(0,0,0,.12);
+    padding: 8mm;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 3mm;
+    page-break-after: always;
+  }
+  .a4 .cell {
+    border: 0.2mm dashed #ccc;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    background: #fff;
+  }
+  .a4 .cell.empty { background: repeating-linear-gradient(45deg,#f8f8f8,#f8f8f8 6px,#fff 6px,#fff 12px); }
+  .a4 .cell .mount {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .a4 .cell .mount > svg,
+  .a4 .cell .mount > img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: 100%;
+    object-fit: contain;
+  }
+  .page-label {
+    width: 210mm;
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: -8px;
+  }
+  @media print {
+    html, body {
+      height: auto !important;
+      overflow: visible !important;
+      display: block !important;
+    }
+    .toolbar, .panel, .page-label, .no-print { display: none !important; }
+    .layout {
+      display: block !important;
+      padding: 0;
+      max-width: none;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    main.sheets-wrap {
+      height: auto !important;
+      overflow: visible !important;
+    }
+    #sheets { gap: 0; }
+    .a4 {
+      box-shadow: none;
+      margin: 0;
+      width: 210mm;
+      height: 297mm;
+    }
+    @page { size: A4 portrait; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar no-print">
+  <a href="index.html">← กลับเกม</a>
+  <a href="https://x.com/nolawdJi" target="_blank" rel="noopener noreferrer" style="color:#fbbf24;text-decoration:none;font-size:12px;font-weight:700" title="ผู้จัดทำ">JiraJiran</a>
+  <button type="button" id="btnBuild">สร้างแผ่นพิมพ์ (clone ตามจำนวน)</button>
+  <button type="button" class="ghost" id="btnPrint">พิมพ์ / บันทึก PDF</button>
+  <button type="button" class="ghost" id="btnPrintSkin" title="สลับเทมเพลตพิมพ์ V2 / เปล่า (ไม่ซ้อนใบ)">พิมพ์ · V2</button>
+  <button type="button" class="ghost" id="btnClear">Clear</button>
+  <button type="button" class="ghost" id="btnDefault">Default</button>
+  <button type="button" class="ghost" id="btnExport">Export ZIP…</button>
+  <label class="btn ghost" style="display:inline-flex;align-items:center;background:#334155;color:#e2e8f0;margin:0">
+    Import ZIP/JSON
+    <input type="file" id="importFile" accept=".zip,.json,application/zip,application/json" hidden />
+  </label>
+  <span class="meta" id="status">โหลด template…</span>
+</div>
+
+<div class="layout">
+  <aside class="panel no-print">
+    <h2>ข้อมูลการ์ด (แก้ไขได้)</h2>
+    <p class="hint">
+      สลับ <strong>พิมพ์ · V2 / เปล่า</strong> ในแถบเครื่องมือ (แยกเทมเพลต ไม่ซ้อนใบ)
+      · V2 เต็ม = <code>Asset/Card/Template/SVGTemplate.svg</code> + <code>Asset/Card/Art/</code>
+      · <strong>เปล่า</strong> = กรอบจาก <code>Asset/Card/Frame/Template_Card.svg</code> อย่างเดียว (ไม่มีเลข/ข้อความ/ไอคอน) · ชนิดที่ 4 <strong>นำเข้า</strong> ใส่เฉพาะรูปในช่อง
+      · แก้ชื่อ / lore / เงื่อนไข / เหรียญ / จำนวนใบ แล้วกดสร้างแผ่นพิมพ์ — 1 หน้า A4 = 9 ใบ (3×3)
+      · Export รวมค่าเกมใน pack.json · Import ในเกมจะ Apply ให้เลย
+    </p>
+
+    <div class="settings-box" id="packSettings">
+      <h3>⚙ แพ็ก &amp; ค่าเกม (ติดไปกับ Export)</h3>
+      <label>ชื่อแพ็ก
+        <input id="packName" type="text" maxlength="48" value="LoyTong Custom Pack" />
+      </label>
+      <div class="row2">
+        <label>นิยมสูงสุด
+          <input id="cfgMaxStars" type="number" min="3" max="30" value="10" />
+        </label>
+        <label>มลพิษสูงสุด
+          <input id="cfgMaxPol" type="number" min="3" max="30" value="10" />
+        </label>
+        <label>เหรียญสูงสุด
+          <input id="cfgMaxCoins" type="number" min="3" max="20" value="7" />
+        </label>
+        <label>เหรียญเริ่ม
+          <input id="cfgStartCoins" type="number" min="0" max="20" value="4" />
+        </label>
+        <label>เหรียญ/เทิร์น
+          <input id="cfgIncome" type="number" min="0" max="5" value="1" />
+        </label>
+        <label>เวลาคิด (วิ)
+          <input id="cfgBidSec" type="number" min="5" max="60" value="12" />
+        </label>
+      </div>
+      <label class="check">
+        <input id="cfgRecycle" type="checkbox" />
+        <span>สำรับวน (ไพ่หมดแล้วสับใหม่ ไม่จบเพราะการ์ดหมด)</span>
+      </label>
+      <label>เงื่อนไขจบเกม
+        <select id="cfgEndMode">
+          <option value="classic">1) แบบเดิม — นิยมเต็มหรือมลพิษเต็ม (และไพ่หมดถ้าไม่วน)</option>
+          <option value="turns">2) บังคับจบที่ Turn ที่กำหนด</option>
+        </select>
+      </label>
+      <label id="cfgTurnsWrap" class="hidden">จบที่ Turn
+        <input id="cfgMaxTurns" type="number" min="5" max="99" value="30" />
+      </label>
+    </div>
+
+    <div id="editor"></div>
+    <button type="button" class="btn-add-bottom" id="btnAdd">+ เพิ่มประเภทการ์ด</button>
+  </aside>
+  <main class="sheets-wrap">
+    <div id="sheets"></div>
+  </main>
+</div>
+
+<script>
+const COND = {
+  most: { id: 'most', short: 'ลงมากสุดคนเดียว ถ้าเสมอ ได้พร้อมกัน', icon: '👑' },
+  all_sum: { id: 'all_sum', short: 'ทุกคนได้ร่วมกัน ไม่ลงก็ได้', icon: '🤝' },
+  not_pay_minus: { id: 'not_pay_minus', short: 'ร่วมด้วยช่วยกัน (โทษปรับได้)', icon: '⚠️' }
+};
+
+function getFailPen(card) {
+  const type = (card && (card.failPenType === 'coins' || card.failPenType === 'pollution'))
+    ? card.failPenType : 'stars';
+  const amt = Math.max(1, Math.min(9, parseInt(card?.failPenAmt, 10) || 1));
+  return { type, amt };
+}
+
+function failPenShort(card) {
+  const { type, amt } = getFailPen(card);
+  if (type === 'coins') return `ร่วมด้วยช่วยกัน ไม่ลงเสียเหรียญ ${amt}`;
+  if (type === 'pollution') return `ร่วมด้วยช่วยกัน ไม่ลงมลพิษ +${amt}`;
+  return `ร่วมด้วยช่วยกัน ไม่ลงเสียนิยม ${amt}`;
+}
+
+function condShort(card) {
+  if (!card?.cond) return '';
+  if (card.cond === 'not_pay_minus') return failPenShort(card);
+  return COND[card.cond]?.short || '';
+}
+
+function ensureFailPenDefaults(card) {
+  if (card.cond !== 'not_pay_minus') return;
+  if (card.failPenType !== 'coins' && card.failPenType !== 'pollution' && card.failPenType !== 'stars')
+    card.failPenType = 'stars';
+  card.failPenAmt = Math.max(1, Math.min(9, parseInt(card.failPenAmt, 10) || 1));
+}
+
+const CARD_ART = [
+  '01.jpg', '02.jpg', '03.jpg', '04.jpg', '05.jpg', '06.jpg', '07.jpg', '08.jpg',
+  '09.jpg', '10.jpg', '11.jpg', '12.jpg', '13.jpg', '14.jpg', '15.jpg', '16.jpg',
+  '17.jpg', '18.jpg', '19.jpg', '20.jpg', '21.jpg', '22.jpg', '23.jpg', '24.jpg',
+];
+const CARD_ART_V2_DIR = 'Asset/Card/Art/';
+function cardArtFileV2(typeNum) {
+  const n = Math.max(1, Math.min(24, parseInt(typeNum, 10) || 1));
+  return 'Card_' + String(n).padStart(4, '0') + '.png';
+}
+
+/** Print skin — V2 full + blank only (V1 removed). Blank is print-only. */
+const UI_SKIN_KEY = 'loytong-ui-skin';
+const PRINT_SKINS = ['v2', 'blank'];
+let printSkin = (localStorage.getItem(UI_SKIN_KEY) === 'blank') ? 'blank' : 'v2';
+function isPrintSkinV2() { return printSkin === 'v2'; }
+function isPrintSkinBlank() { return printSkin === 'blank'; }
+
+/** Full V2 inject — new bitmap template (game + print full). Blank mode must NOT use this. */
+const TEMPLATE_CARD_V2 = 'Asset/Card/Template/SVGTemplate.svg?v=asset1';
+/** Bust browser cache when replacing Card_*.png in place */
+const CARD_ART_V2_VER = 'art5';
+/** Blank print frame only — existing Template_Card path (NOT SVGTemplate.svg) */
+const TEMPLATE_CARD_BLANK = 'Asset/Card/Frame/Template_Card.svg';
+const V2_TYPE_GROUP = {
+  krathong: 'CardTyle_kaTong',
+  clean: 'CardTyle_Fix',
+  event: 'CardTyle_Event'
+};
+/** Blank mode always uses this single frame size (no type switch). */
+const BLANK_FRAME_ID = V2_TYPE_GROUP.krathong;
+const BLANK_VIEWBOX = '0 0 280 400';
+/** Blank import: full card face (not Mask_Image / IMG_SLOT). */
+const BLANK_CARD_SIZE = { w: 280, h: 400 };
+const BLANK_CHROME_IDS = [
+  'popularity_icon', 'Toxic_icon', 'Toxic_icon_FL', 'Fix_icon',
+  'condition_Icon', 'condition_OnlyOne', 'condition_EvenyOne_PutCoin', 'condition_EvenyOneGood',
+  'condition_Icon_FL', 'condition_OnlyOne_FL', 'condition_EvenyOne_PutCoin_FL', 'condition_EvenyOneGood_FL',
+  'Number_Paid', 'Number_Paid_FL',
+  'popularity_Number', 'popularity_Number_FL', 'popularity_icon_FL',
+  'Toxic_Number', 'Toxic_Number_plus', 'Toxic_Number_minus', 'Fix_Number',
+  'Toxic_Number_FL',
+  'condition_Number', 'condition_Number_FL',
+  'Event_icon_1', 'Event_icon_2', 'Event_icon_3',
+  'Event_Get_Toxic', 'Event_Get_Bad_popularity', 'Event_Get_Lost_Coin',
+  'Event_Number_1', 'Event_Number_2', 'Event_Number_3'
+];
+const V2_VIEWBOX = {
+  krathong: '0 0 280 400',
+  clean: '280 0 280 400',
+  event: '560 0 280 400'
+};
+const V2_COND_ICON = {
+  most: 'condition_OnlyOne',
+  all_sum: 'condition_EvenyOneGood',
+  not_pay_minus: 'condition_EvenyOne_PutCoin'
+};
+const V2_COND_ICON_FL = {
+  most: 'condition_OnlyOne_FL',
+  all_sum: 'condition_EvenyOneGood_FL',
+  not_pay_minus: 'condition_EvenyOne_PutCoin_FL'
+};
+const V2_EVENT_GFX = {
+  storm:   { icon: 'Event_Get_Toxic',          amt: () => 2 },
+  scandal: { icon: 'Event_Get_Bad_popularity', amt: () => -1 },
+  bill:    { icon: 'Event_Get_Lost_Coin',      amt: () => -2 }
+};
+const V2_EVENT_POS = [
+  { icon: 'Event_icon_1', num: 'Event_Number_1' },
+  { icon: 'Event_icon_2', num: 'Event_Number_2' },
+  { icon: 'Event_icon_3', num: 'Event_Number_3' }
+];
+
+const IMG_SLOT = { x: 7.45, y: 4, w: 264.35, h: 264.35 };
+/** V2 art slots — Get_Image_here / _2 / _3; mask = Mask_*_Image_here_* in SVG (no invented transforms). */
+const V2_ART_SLOT_ID = {
+  krathong: 'Get_Image_here',
+  clean: 'Get_Image_here_2',
+  event: 'Get_Image_here_3'
+};
+const V2_ART_SLOT_FALLBACK = {
+  krathong: ['Get_Image_here_FL', 'Mask_Image'],
+  clean: ['Get_Image_here_FL', 'Mask_Image_FL'],
+  event: ['Get_Image_here_FL_FL', 'Mask_Image_FL_FL']
+};
+
+/** V2 art: square (1:1 aspect) matching MaskImage placeholder — not SVG unit 1×1. */
+const IMG_SLOT_V2 = { x: -124.6, y: -124.55, w: 249.85, h: 249.85 };
+
+function svgV2ArtSlot(doc, tk) {
+  const primary = V2_ART_SLOT_ID[tk] || V2_ART_SLOT_ID.krathong;
+  const el = (doc.getElementById && doc.getElementById(primary))
+    || (doc.querySelector && doc.querySelector('[id="' + primary + '"]'));
+  if (el) return el;
+  const alts = V2_ART_SLOT_FALLBACK[tk] || V2_ART_SLOT_FALLBACK.krathong;
+  for (const id of alts) {
+    const hit = (doc.getElementById && doc.getElementById(id))
+      || (doc.querySelector && doc.querySelector('[id="' + id + '"]'));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Read square slot from placeholder inside Get_Image_here*; fallback IMG_SLOT_V2. */
+function svgV2ImageRect(slotEl) {
+  if (!slotEl) return { x: IMG_SLOT_V2.x, y: IMG_SLOT_V2.y, w: IMG_SLOT_V2.w, h: IMG_SLOT_V2.h };
+  const probe = slotEl.querySelector('use, path, rect, image');
+  if (probe && typeof probe.getBBox === 'function') {
+    try {
+      const b = probe.getBBox();
+      if (b && b.width > 1 && b.height > 1) {
+        const side = Math.max(b.width, b.height);
+        const x = b.x + (b.width - side) / 2;
+        const y = b.y + (b.height - side) / 2;
+        return { x, y, w: side, h: side };
+      }
+    } catch (_) { /* detached bbox may throw */ }
+  }
+  return { x: IMG_SLOT_V2.x, y: IMG_SLOT_V2.y, w: IMG_SLOT_V2.w, h: IMG_SLOT_V2.h };
+}
+let templateCardV2 = null;
+let templateCardV2Ready = null;
+let templateCardBlank = null;
+let templateCardBlankReady = null;
+
+/** สำรับตั้งต้น — sync กับเกม (ชื่อสั้นพอดีช่อง) */
+let deck = [
+  { n:'กระทงขนมปังหมีเนย', t:'krathong', pop:3, pol:1, cost:7, cond:'most', qty:1, f:'กระแสมาแรงมาก อยากได้ช็อตลงโซเชียล\nย่อยสลายง่าย แต่น้ำยังเสียจากแป้ง' },
+  { n:'กระทงน้ำแข็งอัจฉริยะ', t:'krathong', pop:3, pol:1, cost:7, cond:'most', qty:1, f:'นวัตกรรมละลายกลายเป็นน้ำทันที\nและทั้งแข่งชิงเครดิตจัดงานรักษ์โลก' },
+  { n:'กระทงไฟ LED อลังการ', t:'krathong', pop:3, pol:2, cost:7, cond:'most', qty:2, f:'สวยเด่นตระการตาสุดๆ ในงาน\nขยะอิเล็กทรอนิกส์ทำให้น้ำเสียเพิ่ม' },
+  { n:'ประกวดนางนพมาศ', t:'krathong', pop:3, pol:2, cost:8, cond:'most', qty:2, f:'งานใหญ่ของจังหวัด\nใครทุ่มงบโชว์ได้มากกว่าได้ใจประชาชน' },
+  { n:'กระทงขนมปังแฟนซี', t:'krathong', pop:2, pol:1, cost:6, cond:'most', qty:3, f:'สวยงามย่อยสลายได้ เป็นกระทงยอดนิยม\nระดับมาตรฐานที่คนประมูลแย่งกัน' },
+  { n:'กระทงต้นกล้วยประดิษฐ์', t:'krathong', pop:2, pol:1, cost:6, cond:'most', qty:3, f:'แบบดั้งเดิม แข่งชิงเครดิตรักษ์โลก\nไม่ใช่แชร์แต้ม' },
+  { n:'กระทงกะลามะพร้าวสายธาร', t:'krathong', pop:2, pol:2, cost:6, cond:'most', qty:3, f:'กะลามะพร้าวลอยเป็นสายสวยงามมาก\nตอนกลางคืน แต่เก็บไม่หมดจะเน่าในน้ำ' },
+  { n:'กระทงใบตองธรรมดา', t:'krathong', pop:2, pol:2, cost:6, cond:'not_pay_minus', qty:3, f:'มาตรฐานขั้นต่ำของเทศบาล\nร่วมมือถึงราคา ได้แต้มคนที่ลงมือ' },
+  { n:'ลอยกระทงออนไลน์ VR', t:'krathong', pop:1, pol:1, cost:5, cond:'most', qty:3, f:'คนรุ่นใหม่ชอบ ต้องใช้พลังงานไฟฟ้า\nและเซิร์ฟเวอร์จัดกิจกรรมดิจิทัล' },
+  { n:'กระทงกระดาษรีไซเคิล', t:'krathong', pop:1, pol:1, cost:5, cond:'all_sum', qty:3, f:'ชุมชนร่วมช่วยกันพับ\nได้แต้มเฉพาะคนที่ลงมือทำ' },
+  { n:'กระทงโฟมประดับผ้าสด', t:'krathong', pop:1, pol:2, cost:5, cond:'not_pay_minus', qty:2, f:'สวยเนียนแต่แอบใช้โฟม ล้มโดนต่อว่า\nไม่ลงสำเร็จก็ไม่ได้แต้มฟรี' },
+  { n:'กระทงพลาสติก (PLA)', t:'krathong', pop:1, pol:2, cost:5, cond:'most', qty:2, f:'อ้างว่าย่อยสลายได้\nแต่แข่งชิงภาพลักษณ์รักษ์โลก?' },
+  { n:'กระทงพลาสติกรีไซเคิล', t:'krathong', pop:1, pol:3, cost:5, cond:'not_pay_minus', qty:1, f:'เน้นสะดวกแต่สร้างขยะพิษสูงมาก\nถ้าไม่ลงเหรียญจะโดนชาวบ้านต่อว่า' },
+  { n:'กระทงโฟมดั้งเดิม', t:'krathong', pop:1, pol:3, cost:6, cond:'most', qty:1, f:'วัสดุยุคเก่าทำลายแม่น้ำ\nใครยอมรับผิดชอบจัดงานนี้ได้คนเดียว' },
+  { n:'กังหันน้ำชัยพัฒนา', t:'clean', pop:0, pol:-2, cost:7, cond:'all_sum', qty:3, f:'งานโครงสร้างพื้นฐาน\nร่วมมือลดมลพิษ' },
+  { n:'EM บอลฟื้นฟูน้ำ', t:'clean', pop:0, pol:-2, cost:7, cond:'not_pay_minus', qty:3, f:'มาตรการบังคับ\nไม่ร่วมแล้วล้มโดนหักนิยม' },
+  { n:'บำบัดน้ำเสียปิดทอง', t:'clean', pop:0, pol:-3, cost:7, cond:'all_sum', qty:2, f:'ทำเงียบๆ\nแต่ล้างมลพิษได้มหาศาล' },
+  { n:'ขุดลอกเลนหน้าเขื่อน', t:'clean', pop:0, pol:-3, cost:6, cond:'not_pay_minus', qty:2, f:'งานหนักเร่งด่วน\nที่ต้องบังคับทุกฝ่ายลงเหรียญช่วยกัน' },
+  { n:'ร่วมช่วยกันคลีนคลอง', t:'clean', pop:1, pol:-3, cost:7, cond:'most', qty:2, f:'ได้ทั้งน้ำสะอาดและภาพลักษณ์\nแข่งชิงผู้นำดีเด่นชุมชน' },
+  { n:'Big Cleaning Day', t:'clean', pop:1, pol:-3, cost:7, cond:'most', qty:2, f:'ออกสื่อคลีนพื้นที่\nใครทุ่มมากสุดได้ใจประชาชน' },
+  { n:'ตลาดน้ำรักษ์โลกไร้ขยะ', t:'clean', pop:1, pol:-3, cost:7, cond:'most', qty:1, f:'อีเวนต์บีบร้านใช้ของไร้พลาสติก\nชิงเด่นผู้จัด' },
+  { n:'ข่าวฉาวเทศบาลเทขยะ', t:'event', pop:-1, pol:0, cost:0, cond:null, qty:2, f:'นักข่าวแฉคลิป ทำให้ความเชื่อมั่น\nคะแนนนิยมโดนตัดทุกคน', event:'scandal' },
+  { n:'ค่าเก็บขยะเทศบาลพุ่งสูง', t:'event', pop:0, pol:0, cost:0, cond:null, qty:2, f:'งบส่วนกลางโดนดึงจ่ายค่าน้ำมันรถขยะ\nทำให้สภาพคล่องเหรียญหายไป 2 เหรียญ', event:'bill' },
+  { n:'พายุฤดูร้อนพัดขยะทะลัก', t:'event', pop:0, pol:2, cost:0, cond:null, qty:1, f:'ฝนตกหนักพัดขยะจากบนบกไหลลงแม่น้ำ\nมลพิษพุ่งสูงทันทีโดยเลี่ยงไม่ได้', event:'storm' },
+].map((c, i) => ({ ...c, typeNum: i + 1, customArt: null }));
+
+const MAX_PRINT_QTY = 10;
+let rebuildTimer = null;
+function scheduleRebuild() {
+  clearTimeout(rebuildTimer);
+  rebuildTimer = setTimeout(() => {
+    refreshThumbs();
+    buildSheets().catch(err => {
+      document.getElementById('status').textContent = 'ผิดพลาด: ' + err.message;
+    });
+  }, 280);
+}
+const templateCache = {};
+let selected = 0;
+
+function escapeXml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function replaceOnce(hay, needle, repl) {
+  const i = hay.indexOf(needle);
+  if (i < 0) return hay;
+  return hay.slice(0, i) + repl + hay.slice(i + needle.length);
+}
+const LORE_MAX_LINES = 2;
+
+/** แสดงบนการ์ด: เคารพ Enter (สูงสุด 2 บรรทัด) · ไม่บังคับตัดอักขระเมื่อ maxLen เป็น null */
+function wrapLore(text, maxLen = null) {
+  const raw = String(text ?? '').replace(/\r\n/g, '\n');
+  const noLimit = maxLen == null || !Number.isFinite(maxLen) || maxLen <= 0;
+  if (raw.includes('\n')) {
+    const parts = raw.split('\n').slice(0, LORE_MAX_LINES);
+    if (noLimit) return [parts[0] || '', parts[1] || ''];
+    return [
+      (parts[0] || '').slice(0, maxLen),
+      (parts[1] || '').slice(0, maxLen)
+    ];
+  }
+  const t = raw.trim();
+  if (noLimit) return [t, ''];
+  if (t.length <= maxLen) return [t, ''];
+  let cut = t.lastIndexOf(' ', maxLen);
+  if (cut < maxLen * 0.4) cut = maxLen;
+  return [t.slice(0, cut).trim().slice(0, maxLen), t.slice(cut).trim().slice(0, maxLen)];
+}
+
+/** จำกัดแค่จำนวนบรรทัด (ไม่ตัดความยาวต่อบรรทัด) — ผู้ใช้ดูเอง */
+function clampLoreInput(text, maxLines = LORE_MAX_LINES) {
+  return String(text ?? '').replace(/\r\n/g, '\n').split('\n').slice(0, maxLines).join('\n');
+}
+function fmtSigned(n) {
+  if (n > 0) return '+' + n;
+  return String(n);
+}
+function cardArtUrl(card) {
+  if (card.customArt) return card.customArt;
+  const typeNum = card.typeNum || 1;
+  return CARD_ART_V2_DIR + cardArtFileV2(typeNum) + '?v=' + CARD_ART_V2_VER;
+}
+function templateKeyFor(card) {
+  if (card.t === 'clean') return 'clean';
+  if (card.t === 'event') return 'event';
+  // external / unknown → same size as krathong frame
+  return 'krathong';
+}
+async function loadTemplateCardV2() {
+  if (templateCardV2) return templateCardV2;
+  if (templateCardV2Ready) return templateCardV2Ready;
+  templateCardV2Ready = (async () => {
+    const res = await fetch(TEMPLATE_CARD_V2);
+    if (!res.ok) throw new Error('โหลด Ver2 SVGTemplate ไม่ได้');
+    templateCardV2 = await res.text();
+    return templateCardV2;
+  })().catch(err => {
+    templateCardV2Ready = null;
+    throw err;
+  });
+  return templateCardV2Ready;
+}
+
+async function loadTemplateCardBlank() {
+  if (templateCardBlank) return templateCardBlank;
+  if (templateCardBlankReady) return templateCardBlankReady;
+  templateCardBlankReady = (async () => {
+    const res = await fetch(TEMPLATE_CARD_BLANK);
+    if (!res.ok) throw new Error('โหลด template เปล่าไม่ได้: ' + TEMPLATE_CARD_BLANK);
+    templateCardBlank = await res.text();
+    return templateCardBlank;
+  })().catch(err => {
+    templateCardBlankReady = null;
+    throw err;
+  });
+  return templateCardBlankReady;
+}
+
+function uniquifySvgIds(svg, uid) {
+  return svg
+    .replace(/\bid="([^"]+)"/g, `id="${uid}_$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${uid}_$1)`)
+    .replace(/xlink:href="#([^"]+)"/g, `xlink:href="#${uid}_$1"`)
+    .replace(/([^:\w])href="#([^"]+)"/g, `$1href="#${uid}_$2"`);
+}
+
+function svgSetHidden(el, hidden) {
+  if (!el) return;
+  if (hidden) el.setAttribute('display', 'none');
+  else el.removeAttribute('display');
+}
+
+/** Ver2: Filter_1 zeros alpha. Reveal = strip filter; hide = display none. */
+function svgSetConditionVisible(el, visible) {
+  if (!el) return;
+  svgSetHidden(el, !visible);
+  el.querySelectorAll('use').forEach(use => {
+    if (visible) use.removeAttribute('filter');
+    else if (!use.hasAttribute('filter')) use.setAttribute('filter', 'url(#Filter_1)');
+  });
+}
+
+function svgSetFirstTspan(el, text) {
+  if (!el) return;
+  const tspan = el.querySelector('tspan');
+  if (tspan) tspan.textContent = String(text ?? '');
+}
+
+function svgClipCenterX(textEl) {
+  if (!textEl) return null;
+  const raw = textEl.getAttribute('clip-path') || '';
+  const m = raw.match(/url\(#([^)]+)\)/);
+  if (!m) return null;
+  const clip = textEl.ownerDocument.getElementById(m[1]);
+  const rect = clip && clip.querySelector('rect');
+  if (!rect) return null;
+  const x = parseFloat(rect.getAttribute('x') || '0');
+  const w = parseFloat(rect.getAttribute('width') || '0');
+  if (!Number.isFinite(x) || !Number.isFinite(w) || w <= 0) return null;
+  return x + w / 2;
+}
+
+function svgCenterTextInClip(textEl) {
+  if (!textEl) return;
+  const cx = svgClipCenterX(textEl);
+  textEl.querySelectorAll('tspan').forEach(ts => {
+    ts.setAttribute('text-anchor', 'middle');
+    if (cx != null) ts.setAttribute('x', String(+cx.toFixed(2)));
+  });
+}
+
+function svgReplaceTspanExact(root, needle, repl) {
+  if (!root) return;
+  root.querySelectorAll('tspan').forEach(ts => {
+    if ((ts.textContent || '') === needle) ts.textContent = repl;
+  });
+}
+
+function svgApplyV2NameLore(typeRoot, card) {
+  if (!typeRoot) return;
+  const FONT = 'Angsana New, Cordia New, Tahoma, sans-serif';
+  typeRoot.querySelectorAll('[font-family="Angsana New"]').forEach(el => {
+    el.setAttribute('font-family', FONT);
+  });
+  const [lore1, lore2] = wrapLore(card.f, null);
+  typeRoot.querySelectorAll('tspan').forEach(ts => {
+    if ((ts.textContent || '') === 'NAME') ts.textContent = card.n || '';
+  });
+  const loreTs = [...typeRoot.querySelectorAll('tspan')].filter(
+    ts => (ts.textContent || '') === 'Lore ลายละเอียด'
+  );
+  if (loreTs[0]) loreTs[0].textContent = lore1 || ' ';
+  if (loreTs[1]) loreTs[1].textContent = lore2 || ' ';
+  // Center NAME / Lore columns in clip (export is left-anchored; runtime must middle-align)
+  typeRoot.querySelectorAll('text[clip-path]').forEach(textEl => {
+    const onlyNums = [...textEl.querySelectorAll('tspan')].every(ts =>
+      /^[+\-]?\d+$/.test((ts.textContent || '').trim())
+    );
+    if (onlyNums) return;
+    svgCenterTextInClip(textEl);
+  });
+}
+
+function svgCenterV2NumberSlots(typeRoot) {
+  if (!typeRoot) return;
+  typeRoot.querySelectorAll('text[clip-path]').forEach(textEl => {
+    const onlyNums = [...textEl.querySelectorAll('tspan')].every(ts =>
+      /^[+\-]?\d+$/.test((ts.textContent || '').trim())
+    );
+    if (onlyNums) svgCenterTextInClip(textEl);
+  });
+}
+
+function svgInjectArtIntoMask(maskEl, artUrl) {
+  if (!maskEl) {
+    if (typeof console !== 'undefined') console.warn('svgInjectArtIntoMask: missing art slot', artUrl);
+    return;
+  }
+  const ns = 'http://www.w3.org/2000/svg';
+  const slot = isPrintSkinV2() ? svgV2ImageRect(maskEl) : IMG_SLOT;
+  maskEl.querySelectorAll('use, image').forEach(n => n.remove());
+  const img = document.createElementNS(ns, 'image');
+  img.setAttribute('href', artUrl);
+  img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', artUrl);
+  img.setAttribute('x', String(slot.x));
+  img.setAttribute('y', String(slot.y));
+  img.setAttribute('width', String(slot.w));
+  img.setAttribute('height', String(slot.h));
+  img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  if (isPrintSkinV2()) {
+    img.style.setProperty('image-rendering', 'pixelated');
+    maskEl.appendChild(img);
+  } else {
+    const inner = maskEl.querySelector('g') || maskEl;
+    inner.appendChild(img);
+  }
+}
+
+function eventEffectsForCard(card) {
+  if (card.t !== 'event') return [];
+  if (Array.isArray(card.events) && card.events.length) {
+    return card.events.filter(e => V2_EVENT_GFX[e]).slice(0, 3);
+  }
+  const key = card.event;
+  if (key && V2_EVENT_GFX[key]) return [key];
+  return [];
+}
+
+function condNumberForCard(card) {
+  if (!card || card.t === 'event') return null;
+  if (card.cond !== 'not_pay_minus') return null;
+  return getFailPen(card).amt;
+}
+
+
+/** Resolve SVG node by id (getElementById may miss on some XML parses). */
+function svgById(root, id) {
+  if (!root || !id) return null;
+  return (root.getElementById && root.getElementById(id))
+    || (root.querySelector && root.querySelector('[id="' + id + '"]'))
+    || null;
+}
+
+/** Force-replace first tspan under Toxic_Number_plus / _minus in SVG markup. */
+function forceReplacePolTspan(svgMarkup, isFix, pol) {
+  const text = fmtSigned(pol ?? 0);
+  const ids = isFix
+    ? ['Toxic_Number_minus', 'Toxic_Number_FL', 'Fix_Number', 'Toxic_Number']
+    : ['Toxic_Number_plus', 'Toxic_Number'];
+  for (const id of ids) {
+    const re = new RegExp(
+      '(id="' + id + '"[\\s\\S]*?<tspan[^>]*>)([^<]*)(<\\/tspan>)',
+      'i'
+    );
+    if (!re.test(svgMarkup)) continue;
+    // Reset lastIndex after test(); use function replacer (avoid $1+N ambiguity).
+    re.lastIndex = 0;
+    return svgMarkup.replace(re, (_, a, _old, c) => a + text + c);
+  }
+  return svgMarkup;
+}
+
+/** Set pollution number on SVGTemplate slots (plus=krathong, minus=clean). */
+function svgSetPolNumber(root, isFix, pol) {
+  if (!root) return false;
+  const text = fmtSigned(pol ?? 0);
+  const ids = isFix
+    ? ['Toxic_Number_minus', 'Toxic_Number_FL', 'Fix_Number', 'Toxic_Number']
+    : ['Toxic_Number_plus', 'Toxic_Number'];
+  let ok = false;
+  for (const id of ids) {
+    const el = svgById(root, id);
+    if (!el) continue;
+    const spans = el.querySelectorAll('tspan');
+    if (!spans.length) continue;
+    spans.forEach(ts => { ts.textContent = text; });
+    ok = true;
+    break;
+  }
+  if (!ok && typeof console !== 'undefined') {
+    console.warn('svgSetPolNumber: slot not found', isFix ? 'minus' : 'plus', pol);
+  }
+  return ok;
+}
+
+function applyV2KrathongOrFix(root, card, isFix) {
+  const condMap = isFix ? V2_COND_ICON_FL : V2_COND_ICON;
+  Object.values(condMap).forEach(id => svgSetConditionVisible(root.getElementById(id), false));
+  svgSetConditionVisible(root.getElementById(isFix ? 'condition_Icon_FL' : 'condition_Icon'), false);
+
+  const showCond = condMap[card.cond];
+  if (showCond) svgSetConditionVisible(root.getElementById(showCond), true);
+
+  const numId = isFix ? 'condition_Number_FL' : 'condition_Number';
+  const cNum = condNumberForCard(card);
+  const numEl = root.getElementById(numId);
+  if (cNum == null) {
+    svgSetHidden(numEl, true);
+  } else {
+    svgSetHidden(numEl, false);
+    svgSetFirstTspan(numEl, String(cNum));
+  }
+
+  svgSetFirstTspan(root.getElementById(isFix ? 'Number_Paid_FL' : 'Number_Paid'), String(card.cost ?? 0));
+  svgSetFirstTspan(
+    root.getElementById(isFix ? 'popularity_Number_FL' : 'popularity_Number'),
+    fmtSigned(card.pop ?? 0)
+  );
+
+  if (isFix) {
+    // บำบัด: Toxic_Number_minus (−n) + Toxic_icon_FL
+    svgSetHidden(root.getElementById('popularity_icon_FL'), false);
+    svgSetHidden(root.getElementById('Toxic_icon_FL'), false);
+    svgSetHidden(root.getElementById('Fix_icon'), true);
+    svgSetPolNumber(root, true, card.pol);
+  } else {
+    // กระทง: Toxic_Number_plus (+n) + Toxic_icon
+    svgSetHidden(root.getElementById('popularity_icon'), false);
+    svgSetHidden(root.getElementById('Toxic_icon'), false);
+    svgSetPolNumber(root, false, card.pol);
+  }
+}
+
+function applyV2Event(root, card) {
+  V2_EVENT_POS.forEach(({ icon, num }) => {
+    svgSetHidden(root.getElementById(icon), true);
+    svgSetHidden(root.getElementById(num), true);
+  });
+  Object.values(V2_EVENT_GFX).forEach(({ icon }) => {
+    svgSetHidden(root.getElementById(icon), true);
+  });
+
+  eventEffectsForCard(card).forEach((evKey, i) => {
+    const gfx = V2_EVENT_GFX[evKey];
+    const pos = V2_EVENT_POS[i];
+    if (!gfx || !pos) return;
+
+    const iconEl = root.getElementById(gfx.icon);
+    const anchor = root.getElementById(pos.icon);
+    if (iconEl && anchor) {
+      const t = anchor.getAttribute('transform');
+      if (t) iconEl.setAttribute('transform', t);
+    }
+    svgSetHidden(iconEl, false);
+
+    const numEl = root.getElementById(pos.num);
+    svgSetHidden(numEl, false);
+    svgSetFirstTspan(numEl, fmtSigned(gfx.amt(card)));
+  });
+}
+
+function svgClearMaskArt(maskEl) {
+  if (!maskEl) return;
+  const inner = maskEl.querySelector('g') || maskEl;
+  inner.querySelectorAll('use, image').forEach(n => n.remove());
+}
+
+/** Blank print: hide numbers / text / icons — no full inject helpers. */
+function hideBlankChrome(doc) {
+  BLANK_CHROME_IDS.forEach(id => svgSetHidden(doc.getElementById(id), true));
+  Object.values(V2_TYPE_GROUP).forEach(gid => {
+    const g = doc.getElementById(gid);
+    if (!g) return;
+    g.querySelectorAll('text').forEach(t => svgSetHidden(t, true));
+  });
+}
+
+function svgRemoveBlankFullArt(svgRoot) {
+  if (!svgRoot) return;
+  svgRoot.querySelectorAll('#Blank_Full_Art, [id$="_Blank_Full_Art"]').forEach(n => n.remove());
+  const doc = svgRoot.ownerDocument || svgRoot;
+  const defs = svgRoot.querySelector('defs');
+  if (defs) {
+    defs.querySelectorAll('#Blank_Full_Clip, [id$="_Blank_Full_Clip"]').forEach(n => n.remove());
+  }
+  // also remove non-uniquified ids before uniquify
+  const clip = doc.getElementById && doc.getElementById('Blank_Full_Clip');
+  if (clip) clip.remove();
+  const art = doc.getElementById && doc.getElementById('Blank_Full_Art');
+  if (art) art.remove();
+}
+
+/**
+ * Blank import: mask/clip 280×400 replacing default Mask_Image / IMG_SLOT.
+ * Print-only full card face; large images crop via slice.
+ */
+function svgInjectBlankFullCardArt(svgRoot, artUrl) {
+  if (!svgRoot || !artUrl) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  const doc = svgRoot.ownerDocument;
+  svgRemoveBlankFullArt(svgRoot);
+
+  let defs = svgRoot.querySelector('defs');
+  if (!defs) {
+    defs = doc.createElementNS(ns, 'defs');
+    svgRoot.insertBefore(defs, svgRoot.firstChild);
+  }
+  const clip = doc.createElementNS(ns, 'clipPath');
+  clip.setAttribute('id', 'Blank_Full_Clip');
+  clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
+  const rect = doc.createElementNS(ns, 'rect');
+  rect.setAttribute('x', '0');
+  rect.setAttribute('y', '0');
+  rect.setAttribute('width', String(BLANK_CARD_SIZE.w));
+  rect.setAttribute('height', String(BLANK_CARD_SIZE.h));
+  clip.appendChild(rect);
+  defs.appendChild(clip);
+
+  const g = doc.createElementNS(ns, 'g');
+  g.setAttribute('id', 'Blank_Full_Art');
+  g.setAttribute('clip-path', 'url(#Blank_Full_Clip)');
+
+  const img = doc.createElementNS(ns, 'image');
+  img.setAttribute('href', artUrl);
+  img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', artUrl);
+  img.setAttribute('x', '0');
+  img.setAttribute('y', '0');
+  img.setAttribute('width', String(BLANK_CARD_SIZE.w));
+  img.setAttribute('height', String(BLANK_CARD_SIZE.h));
+  img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  g.appendChild(img);
+  svgRoot.appendChild(g);
+}
+
+/**
+ * Print template only — Template_Card.svg, fixed 280×400.
+ * No customArt: empty frame. With customArt: full-card mask (not IMG_SLOT).
+ */
+function composeBlankCardSvg(svgText, card) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgText, 'image/svg+xml');
+  const svg = doc.documentElement;
+  if (!svg || svg.querySelector('parsererror')) {
+    throw new Error('Blank Template_Card parse failed');
+  }
+
+  ['Get_Image_here', 'Get_Image_here_2', 'Get_Image_here_3',
+   'Get_Image_here_FL', 'Get_Image_here_FL_FL',
+   'Mask_Image', 'Mask_Image_FL', 'Mask_Image_FL_FL'].forEach(id => {
+    svgClearMaskArt(doc.getElementById(id));
+  });
+
+  svg.setAttribute('viewBox', BLANK_VIEWBOX);
+  svg.setAttribute('width', String(BLANK_CARD_SIZE.w));
+  svg.setAttribute('height', String(BLANK_CARD_SIZE.h));
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.removeAttribute('x');
+  svg.removeAttribute('y');
+
+  const wantImport = !!(card && card.customArt);
+  if (wantImport) {
+    // Hide default template faces (incl. old Mask_Image) — replace with 280×400 mask art
+    Object.values(V2_TYPE_GROUP).forEach(id => {
+      svgSetHidden(doc.getElementById(id), true);
+    });
+    svgInjectBlankFullCardArt(svg, card.customArt);
+  } else {
+    Object.values(V2_TYPE_GROUP).forEach(id => {
+      svgSetHidden(doc.getElementById(id), id !== BLANK_FRAME_ID);
+    });
+    hideBlankChrome(doc);
+    svgRemoveBlankFullArt(svg);
+  }
+
+  return new XMLSerializer().serializeToString(svg);
+}
+
+function injectArtAndTextV2(svgText, card) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgText, 'image/svg+xml');
+  const svg = doc.documentElement;
+  if (!svg || svg.querySelector('parsererror')) {
+    throw new Error('Ver2 SVGTemplate parse failed');
+  }
+
+  const tk = templateKeyFor(card);
+  const activeId = V2_TYPE_GROUP[tk] || V2_TYPE_GROUP.krathong;
+  Object.values(V2_TYPE_GROUP).forEach(id => {
+    svgSetHidden(doc.getElementById(id), id !== activeId);
+  });
+
+  const typeRoot = doc.getElementById(activeId);
+  const art = cardArtUrl(card);
+  if (tk === 'krathong') {
+    svgInjectArtIntoMask(svgV2ArtSlot(doc, 'krathong'), art);
+    applyV2KrathongOrFix(doc, card, false);
+  } else if (tk === 'clean') {
+    svgInjectArtIntoMask(svgV2ArtSlot(doc, 'clean'), art);
+    applyV2KrathongOrFix(doc, card, true);
+  } else {
+    svgInjectArtIntoMask(svgV2ArtSlot(doc, 'event'), art);
+    applyV2Event(doc, card);
+  }
+
+  if (typeRoot) {
+    svgApplyV2NameLore(typeRoot, card);
+    svgCenterV2NumberSlots(typeRoot);
+  }
+
+  // Pol last — after lore/center so nothing can leave template placeholder.
+  if (tk === 'krathong') svgSetPolNumber(doc, false, card.pol);
+  else if (tk === 'clean') svgSetPolNumber(doc, true, card.pol);
+
+  svg.setAttribute('viewBox', V2_VIEWBOX[tk] || V2_VIEWBOX.krathong);
+  svg.setAttribute('width', '280');
+  svg.setAttribute('height', '400');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.removeAttribute('x');
+  svg.removeAttribute('y');
+
+  let out = new XMLSerializer().serializeToString(svg);
+  if (tk === 'krathong' || tk === 'clean') {
+    out = forceReplacePolTspan(out, tk === 'clean', card.pol);
+  }
+  return out;
+}
+function injectArtAndText(svg, card) {
+  const art = cardArtUrl(card);
+  const imgTag =
+    `<image href="${art}" xlink:href="${art}" ` +
+    `x="${IMG_SLOT.x}" y="${IMG_SLOT.y}" width="${IMG_SLOT.w}" height="${IMG_SLOT.h}" ` +
+    `preserveAspectRatio="xMidYMid slice"/>`;
+  const FONT = 'Angsana New, Cordia New, Tahoma, sans-serif';
+  svg = svg.replace(/font-family="Angsana New"/g, `font-family="${FONT}"`);
+  svg = svg.replace(
+    /<g transform="matrix\(\s*1\.00244140625[^>]*>\s*<use[^/]*\/>\s*<\/g>/,
+    `<g transform="matrix( 1.00244140625, 0, 0, 1.0024566650390625, 0,0) ">${imgTag}</g>`
+  );
+  const NAME_CX = (-35.75 + 177.3 / 2).toFixed(2);
+  const LORE_CX = (-51.9 + 261.45 / 2).toFixed(2);
+  const [lore1, lore2] = wrapLore(card.f);
+  const nameTspan =
+    `<tspan text-anchor="middle" x="${NAME_CX}" y="21.2" baseline-shift="0%" font-family="${FONT}" font-weight="bold" font-size="22" fill="#000000" xml:space="preserve">${escapeXml(card.n)}</tspan>`;
+  const loreStroke = 'stroke="#000000" stroke-width="3" paint-order="stroke fill"';
+  const loreTspans =
+    `<tspan text-anchor="middle" x="${LORE_CX}" y="14.1" baseline-shift="0%" font-family="${FONT}" font-size="17" fill="#FFFFFF" ${loreStroke} xml:space="preserve">${escapeXml(lore1)}</tspan>` +
+    `<tspan text-anchor="middle" x="${LORE_CX}" y="34.35" baseline-shift="0%" font-family="${FONT}" font-size="17" fill="#FFFFFF" ${loreStroke} xml:space="preserve">${escapeXml(lore2 || ' ')}</tspan>`;
+  svg = svg.replace(/<tspan[^>]*>NAME<\/tspan>/, nameTspan);
+  svg = svg.replace(
+    /<tspan[^>]*>Lore ลายละเอียด<\/tspan><tspan[^>]*>Lore ลายละเอียด<\/tspan>/,
+    loreTspans
+  );
+  if (card.t === 'event') {
+    let a1 = 'เกิดผลทันที', a2 = '';
+    if (card.event === 'scandal') { a1 = 'ทุกคน −1 ⭐'; a2 = 'นิยมลดลง'; }
+    else if (card.event === 'bill') { a1 = 'ทุกคน −2 🟨'; a2 = 'งบขาดมือ'; }
+    else if (card.event === 'storm') { a1 = 'มลพิษ +2'; a2 = 'เลี่ยงไม่ได้'; }
+    svg = replaceOnce(svg, '>Action Name</tspan>', '>' + escapeXml(a1) + '</tspan>');
+    svg = replaceOnce(svg, '>Action Name</tspan>', '>' + escapeXml(a2) + '</tspan>');
+    return svg;
+  }
+  const cond = COND[card.cond];
+  const label = condShort(card);
+  const condText = escapeXml(label);
+  const costText = escapeXml((card.cost ?? 0) + ' เหรียญ');
+  const condSize = label.length > 22 ? '14' : '16';
+  svg = svg.replace(
+    /<tspan([^>]*)font-size="15"([^>]*)>เงือนไข<\/tspan>/,
+    `<tspan$1font-size="${condSize}"$2>${condText}</tspan>`
+  );
+  svg = svg.replace(
+    /<tspan([^>]*)font-size="15"([^>]*)>ราคาเหรียญ<\/tspan>/,
+    `<tspan$1font-size="19"$2>${costText}</tspan>`
+  );
+  svg = replaceOnce(svg, '>คะแนนนิยม</tspan>', '>' + escapeXml('นิยม ' + fmtSigned(card.pop)) + '</tspan>');
+  svg = replaceOnce(svg, '>มลพิษ</tspan>', '>' + escapeXml('มลพิษ ' + fmtSigned(card.pol)) + '</tspan>');
+  return svg;
+}
+async function composeCardSvg(card) {
+  let svg;
+  if (isPrintSkinBlank()) {
+    const raw = await loadTemplateCardBlank();
+    svg = composeBlankCardSvg(raw, card);
+  } else {
+    const raw = await loadTemplateCardV2();
+    svg = injectArtAndTextV2(raw, card);
+  }
+  const uid = 'p' + (card.typeNum || 1) + '_' + Math.random().toString(36).slice(2, 8);
+  svg = uniquifySvgIds(svg, uid);
+  return svg;
+}
+
+function syncPrintSkinButton() {
+  const btn = document.getElementById('btnPrintSkin');
+  if (!btn) return;
+  btn.textContent = printSkin === 'blank' ? 'พิมพ์ · เปล่า' : 'พิมพ์ · V2';
+}
+
+async function applyPrintSkin(skin, { persist = true } = {}) {
+  printSkin = PRINT_SKINS.includes(skin) ? skin : 'v2';
+  if (persist && printSkin === 'v2') {
+    localStorage.setItem(UI_SKIN_KEY, 'v2');
+  }
+  syncPrintSkinButton();
+  if (printSkin === 'v2') await loadTemplateCardV2();
+  if (printSkin === 'blank') await loadTemplateCardBlank();
+  renderEditor();
+  await refreshThumbs();
+  await buildSheets();
+}
+
+async function togglePrintSkin() {
+  try {
+    const i = PRINT_SKINS.indexOf(printSkin);
+    const next = PRINT_SKINS[(i < 0 ? 0 : i + 1) % PRINT_SKINS.length];
+    await applyPrintSkin(next);
+  } catch (err) {
+    document.getElementById('status').textContent = 'สลับพิมพ์ไม่ได้: ' + err.message;
+    console.error(err);
+  }
+}
+
+function expandByQty(list) {
+  const out = [];
+  list.forEach(c => {
+    const q = Math.min(MAX_PRINT_QTY, Math.max(0, parseInt(c.qty, 10) || 0));
+    for (let i = 0; i < q; i++) out.push({ ...c, cloneIndex: i + 1 });
+  });
+  return out;
+}
+function chunk(arr, size) {
+  const pages = [];
+  for (let i = 0; i < arr.length; i += size) pages.push(arr.slice(i, i + size));
+  return pages;
+}
+
+function renderEditor() {
+  const el = document.getElementById('editor');
+  el.innerHTML = deck.map((c, i) => {
+    const condOpts = Object.keys(COND).map(k =>
+      `<option value="${k}" ${c.cond === k ? 'selected' : ''}>${COND[k].icon} ${COND[k].short}</option>`
+    ).join('');
+    const qty = Math.min(MAX_PRINT_QTY, Math.max(0, +c.qty || 0));
+    const showPen = c.cond === 'not_pay_minus' && c.t !== 'event' && c.t !== 'external';
+    const penType = c.failPenType === 'coins' || c.failPenType === 'pollution' ? c.failPenType : 'stars';
+    const penAmt = Math.max(1, Math.min(9, +c.failPenAmt || 1));
+    const isExternal = c.t === 'external';
+    const isEventLike = c.t === 'event' || isExternal;
+    return `<div class="card-row ${i === selected ? 'active' : ''}" data-i="${i}">
+      <div class="top">
+        <div class="preview-slot" id="thumb-${i}"></div>
+        <strong>#${c.typeNum} ${escapeXml(c.n)}</strong>
+        <div class="qty-wrap">
+          <span class="field-label">จำนวนใบ (สูงสุด ${MAX_PRINT_QTY})</span>
+          <input class="qty" type="number" min="0" max="${MAX_PRINT_QTY}" value="${qty}" data-f="qty" title="จำนวนใบสำหรับพิมพ์" />
+        </div>
+        <button type="button" class="btn-del" data-del="${i}" title="ลบประเภทนี้">ลบ</button>
+      </div>
+      <span class="field-label">ชื่อบนการ์ด</span>
+      <input data-f="n" value="${escapeXml(c.n)}" placeholder="ชื่อการ์ด" maxlength="22" ${isExternal ? 'disabled' : ''} />
+      <span class="field-label">รายละเอียดบนการ์ด (Lore · กด Enter ขึ้นบรรทัด · สูงสุด ${LORE_MAX_LINES} บรรทัด · ไม่จำกัดอักขระ)</span>
+      <textarea data-f="f" rows="2" spellcheck="false" placeholder="บรรทัด1&#10;บรรทัด2" ${isExternal ? 'disabled' : ''}>${escapeXml(c.f)}</textarea>
+      <div class="row2">
+        <div>
+          <span class="field-label">ประเภทการ์ด</span>
+          <select data-f="t">
+            <option value="krathong" ${c.t==='krathong'?'selected':''}>กระทง</option>
+            <option value="clean" ${c.t==='clean'?'selected':''}>ลดมลพิษ</option>
+            <option value="event" ${c.t==='event'?'selected':''}>เหตุการณ์</option>
+            <option value="external" ${isExternal?'selected':''}>นำเข้า (เปล่า)</option>
+          </select>
+        </div>
+        <div>
+          <span class="field-label">เงื่อนไขรางวัล</span>
+          <select data-f="cond" ${isEventLike?'disabled':''}>
+            <option value="">—</option>
+            ${condOpts}
+          </select>
+        </div>
+      </div>
+      <div class="row2" style="${showPen ? '' : 'display:none'}">
+        <div>
+          <span class="field-label">โทษเมื่อไม่ลง (ล้มเหลว)</span>
+          <select data-f="failPenType">
+            <option value="stars" ${penType==='stars'?'selected':''}>เสียนิยม ⭐</option>
+            <option value="coins" ${penType==='coins'?'selected':''}>เสียเหรียญ 🟨</option>
+            <option value="pollution" ${penType==='pollution'?'selected':''}>เพิ่มมลพิษ ☣️</option>
+          </select>
+        </div>
+        <div>
+          <span class="field-label">จำนวนหน่วยโทษ (1–9)</span>
+          <input data-f="failPenAmt" type="number" min="1" max="9" value="${penAmt}" />
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <span class="field-label">ราคา (เหรียญ)</span>
+          <input data-f="cost" type="number" value="${c.cost}" ${isEventLike?'disabled':''} />
+        </div>
+        <div>
+          <span class="field-label">นิยม (⭐)</span>
+          <input data-f="pop" type="number" value="${c.pop}" ${isExternal?'disabled':''} />
+        </div>
+        <div>
+          <span class="field-label">มลพิษ</span>
+          <input data-f="pol" type="number" value="${c.pol}" ${isExternal?'disabled':''} />
+        </div>
+        <div>
+          <span class="field-label">${isPrintSkinBlank() ? 'รูปนำเข้า (เต็มใบ 280×400)' : (isExternal ? 'รูปนำเข้า' : 'รูปภาพ')}</span>
+          <label class="btn" style="display:flex;align-items:center;justify-content:center;background:#e2e8f0;font-size:11px;padding:4px;border-radius:6px;cursor:pointer;height:28px">
+            รูปภายนอก
+            <input type="file" accept="image/*" data-f="art" hidden />
+          </label>
+        </div>
+      </div>
+      ${isPrintSkinBlank() ? '<p class="hint" style="margin:6px 0 0">โหมดเปล่า (พิมพ์อย่างเดียว): กด「รูปภายนอก」ใส่รูปเต็มใบ 280×400 ทับช่องเดิม · รูปใหญ่จะถูกครอป · ไม่มีเลข/ข้อความ</p>' : ''}
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.card-row').forEach(row => {
+    const i = +row.dataset.i;
+    row.addEventListener('click', e => {
+      if (e.target.closest('input,select,textarea,label,button')) return;
+      selected = i;
+      renderEditor();
+      refreshThumbs();
+    });
+    const delBtn = row.querySelector('[data-del]');
+    if (delBtn) {
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        deleteCard(i);
+      });
+    }
+    row.querySelectorAll('[data-f]').forEach(inp => {
+      const apply = (immediate) => {
+        const f = inp.dataset.f;
+        if (f === 'art') {
+          const file = inp.files && inp.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            // Blank print: wire upload to full-card 280×400 path (not Mask_Image)
+            if (isPrintSkinBlank()) {
+              deck[i].t = 'external';
+              deck[i].cond = null;
+              deck[i].n = deck[i].n || 'นำเข้า';
+              deck[i].f = '';
+              deck[i].cost = 0;
+              deck[i].pop = 0;
+              deck[i].pol = 0;
+            }
+            deck[i].customArt = reader.result;
+            renderEditor();
+            scheduleRebuild();
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+        if (f === 'qty') {
+          let q = parseInt(inp.value, 10);
+          if (Number.isNaN(q)) q = 0;
+          q = Math.min(MAX_PRINT_QTY, Math.max(0, q));
+          deck[i].qty = q;
+          if (String(inp.value) !== String(q)) inp.value = q;
+        } else if (f === 'cost' || f === 'pop' || f === 'pol') {
+          deck[i][f] = parseInt(inp.value, 10) || 0;
+        } else if (f === 'failPenAmt') {
+          let a = parseInt(inp.value, 10);
+          if (Number.isNaN(a)) a = 1;
+          a = Math.min(9, Math.max(1, a));
+          deck[i].failPenAmt = a;
+          if (String(inp.value) !== String(a)) inp.value = a;
+        } else if (f === 'failPenType') {
+          deck[i].failPenType = (inp.value === 'coins' || inp.value === 'pollution') ? inp.value : 'stars';
+        } else if (f === 'cond') {
+          deck[i].cond = inp.value || null;
+          if (deck[i].cond === 'not_pay_minus') ensureFailPenDefaults(deck[i]);
+        } else if (f === 'f') {
+          const clamped = clampLoreInput(inp.value);
+          if (inp.value !== clamped) {
+            const pos = inp.selectionStart;
+            inp.value = clamped;
+            try { inp.setSelectionRange(Math.min(pos, clamped.length), Math.min(pos, clamped.length)); } catch (_) {}
+          }
+          deck[i].f = clamped;
+        } else {
+          deck[i][f] = inp.value;
+        }
+        if (f === 't' && (deck[i].t === 'event' || deck[i].t === 'external')) deck[i].cond = null;
+        if (f === 't' && deck[i].t === 'external') {
+          deck[i].n = deck[i].n || 'นำเข้า';
+          deck[i].f = '';
+          deck[i].cost = 0;
+          deck[i].pop = 0;
+          deck[i].pol = 0;
+        }
+        if (f === 'cond' || f === 'failPenType' || f === 'failPenAmt' || f === 't') {
+          // re-render editor so penalty row shows/hides
+          if (f === 'cond' || f === 't') {
+            renderEditor();
+            refreshThumbs();
+            buildSheets().catch(() => {});
+            return;
+          }
+        }
+        document.getElementById('status').textContent =
+          `แก้ไขแล้ว · รวม ${deck.reduce((s,c)=>s+Math.min(MAX_PRINT_QTY, +c.qty||0),0)} ใบ`;
+        if (immediate) {
+          refreshThumbs();
+          buildSheets().catch(err => {
+            document.getElementById('status').textContent = 'ผิดพลาด: ' + err.message;
+          });
+        } else {
+          scheduleRebuild();
+        }
+      };
+      inp.addEventListener('change', () => apply(true));
+      inp.addEventListener('input', () => {
+        if (inp.dataset.f === 'n' || inp.dataset.f === 'f' || inp.dataset.f === 'qty') apply(false);
+      });
+      if (inp.dataset.f === 'f') {
+        inp.addEventListener('keydown', e => {
+          if (e.key !== 'Enter') return;
+          const cur = inp.value.replace(/\r\n/g, '\n');
+          const lines = cur.split('\n');
+          if (lines.length >= LORE_MAX_LINES) {
+            e.preventDefault();
+          }
+        });
+      }
+    });
+  });
+}
+
+function renumberDeck() {
+  deck.forEach((c, idx) => { c.typeNum = idx + 1; });
+}
+
+function addCard() {
+  deck.push({
+    typeNum: deck.length + 1,
+    n: 'การ์ดใหม่',
+    t: 'krathong',
+    pop: 1, pol: 1, cost: 5,
+    cond: 'most', qty: 1,
+    f: 'รายละเอียดการ์ด\nบรรทัดสอง',
+    customArt: null
+  });
+  selected = deck.length - 1;
+  renderEditor();
+  refreshThumbs();
+  const panel = document.querySelector('.panel');
+  if (panel) panel.scrollTop = panel.scrollHeight;
+  buildSheets().catch(err => {
+    document.getElementById('status').textContent = 'ผิดพลาด: ' + err.message;
+  });
+}
+
+function deleteCard(i) {
+  const name = deck[i]?.n || '';
+  if (!confirm(`ลบประเภท “${name}” ?`)) return;
+  deck.splice(i, 1);
+  renumberDeck();
+  selected = deck.length ? Math.min(selected, deck.length - 1) : 0;
+  if (selected < 0) selected = 0;
+  renderEditor();
+  refreshThumbs();
+  buildSheets().catch(err => {
+    document.getElementById('status').textContent = 'ผิดพลาด: ' + err.message;
+  });
+}
+
+function clearDeck() {
+  if (!confirm('Clear — ลบการ์ดทั้งหมดออกจากรายการ?')) return;
+  deck = [];
+  selected = 0;
+  renderEditor();
+  document.getElementById('sheets').innerHTML = '';
+  document.getElementById('status').textContent = 'Clear แล้ว · 0 ประเภท · กด Default เพื่อคืนค่าเริ่มต้น';
+}
+
+async function refreshThumbs() {
+  for (let i = 0; i < deck.length; i++) {
+    const slot = document.getElementById('thumb-' + i);
+    if (!slot) continue;
+    try {
+      const svg = await composeCardSvg(deck[i]);
+      slot.innerHTML = svg;
+      const s = slot.querySelector('svg');
+      if (s) { s.style.width = '100%'; s.style.height = '100%'; }
+    } catch (err) {
+      console.error('thumb compose failed', i, err);
+      slot.innerHTML = '';
+    }
+  }
+}
+
+async function buildSheets() {
+  const status = document.getElementById('status');
+  status.textContent = 'กำลัง compose…';
+  const expanded = expandByQty(deck);
+  const pages = chunk(expanded, 9);
+  const host = document.getElementById('sheets');
+  host.innerHTML = '';
+
+  if (!pages.length) {
+    status.textContent = 'ไม่มีใบพิมพ์ · เพิ่มประเภทหรือกด Default';
+    return;
+  }
+
+  for (let pi = 0; pi < pages.length; pi++) {
+    const label = document.createElement('div');
+    label.className = 'page-label no-print';
+    label.textContent = `หน้า ${pi + 1}/${pages.length} · ${pages[pi].length} ใบ`;
+    host.appendChild(label);
+
+    const page = document.createElement('section');
+    page.className = 'a4';
+    const cells = [];
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (pages[pi][i] ? '' : ' empty');
+      const mount = document.createElement('div');
+      mount.className = 'mount';
+      cell.appendChild(mount);
+      page.appendChild(cell);
+      cells.push(mount);
+    }
+    host.appendChild(page);
+
+    for (let i = 0; i < pages[pi].length; i++) {
+      const svg = await composeCardSvg(pages[pi][i]);
+      cells[i].innerHTML = svg;
+    }
+  }
+
+  const total = expanded.length;
+  status.textContent = `พร้อมพิมพ์ · ${total} ใบ · ${pages.length} หน้า A4 (9 ใบ/หน้า)`;
+}
+
+document.getElementById('btnBuild').onclick = () => buildSheets().catch(err => {
+  document.getElementById('status').textContent = 'ผิดพลาด: ' + err.message;
+  console.error(err);
+});
+document.getElementById('btnPrint').onclick = () => window.print();
+document.getElementById('btnPrintSkin').onclick = () => togglePrintSkin();
+document.getElementById('btnAdd').onclick = () => addCard();
+document.getElementById('btnClear').onclick = () => clearDeck();
+document.getElementById('btnDefault').onclick = () => location.reload();
+document.getElementById('btnExport').onclick = () => exportPackZip().catch(err => {
+  if (err && err.name === 'AbortError') {
+    document.getElementById('status').textContent = 'ยกเลิก Export';
+    return;
+  }
+  document.getElementById('status').textContent = 'Export ไม่สำเร็จ: ' + err.message;
+  console.error(err);
+});
+document.getElementById('importFile').onchange = e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (f) importPackFile(f).catch(err => {
+    document.getElementById('status').textContent = 'Import ไม่สำเร็จ: ' + err.message;
+    console.error(err);
+  });
+};
+
+const ART_EXPORT_SIZE = 300;
+
+function $(id) { return document.getElementById(id); }
+
+function syncTurnsVisibility() {
+  const wrap = $('cfgTurnsWrap');
+  const mode = $('cfgEndMode');
+  if (wrap && mode) wrap.classList.toggle('hidden', mode.value !== 'turns');
+}
+$('cfgEndMode')?.addEventListener('change', syncTurnsVisibility);
+syncTurnsVisibility();
+
+function sanitizeFileBase(name) {
+  const raw = (name || 'loy-pack').trim() || 'loy-pack';
+  return raw
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/\.+$/g, '')
+    .slice(0, 60) || 'loy-pack';
+}
+
+function readSettingsFromUI() {
+  const start = Math.max(0, parseInt($('cfgStartCoins')?.value, 10) || 4);
+  let maxCoins = Math.max(3, parseInt($('cfgMaxCoins')?.value, 10) || 7);
+  return {
+    MAX_STARS: Math.max(3, parseInt($('cfgMaxStars')?.value, 10) || 10),
+    MAX_POLLUTION: Math.max(3, parseInt($('cfgMaxPol')?.value, 10) || 10),
+    MAX_COINS: maxCoins,
+    START_COINS: Math.min(start, maxCoins),
+    COINS_PER_TURN: Math.max(0, parseInt($('cfgIncome')?.value, 10) || 0),
+    BID_SECONDS: Math.max(5, parseInt($('cfgBidSec')?.value, 10) || 12),
+    RECYCLE_DECK: !!$('cfgRecycle')?.checked,
+    END_MODE: $('cfgEndMode')?.value === 'turns' ? 'turns' : 'classic',
+    MAX_TURNS: Math.max(5, parseInt($('cfgMaxTurns')?.value, 10) || 30)
+  };
+}
+
+function applySettingsToUI(s) {
+  if (!s || typeof s !== 'object') return;
+  if (s.MAX_STARS != null && $('cfgMaxStars')) $('cfgMaxStars').value = s.MAX_STARS;
+  if (s.MAX_POLLUTION != null && $('cfgMaxPol')) $('cfgMaxPol').value = s.MAX_POLLUTION;
+  if (s.MAX_COINS != null && $('cfgMaxCoins')) $('cfgMaxCoins').value = s.MAX_COINS;
+  if (s.START_COINS != null && $('cfgStartCoins')) $('cfgStartCoins').value = s.START_COINS;
+  if (s.COINS_PER_TURN != null && $('cfgIncome')) $('cfgIncome').value = s.COINS_PER_TURN;
+  if (s.BID_SECONDS != null && $('cfgBidSec')) $('cfgBidSec').value = s.BID_SECONDS;
+  if (s.RECYCLE_DECK != null && $('cfgRecycle')) $('cfgRecycle').checked = !!s.RECYCLE_DECK;
+  if ($('cfgEndMode')) {
+    $('cfgEndMode').value = s.END_MODE === 'turns' ? 'turns' : 'classic';
+    syncTurnsVisibility();
+  }
+  if (s.MAX_TURNS != null && $('cfgMaxTurns')) $('cfgMaxTurns').value = s.MAX_TURNS;
+}
+
+function resizeToSquareDataUrl(src, size = ART_EXPORT_SIZE) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const side = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+      const sx = ((img.naturalWidth || img.width) - side) / 2;
+      const sy = ((img.naturalHeight || img.height) - side) / 2;
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      resolve(canvas.toDataURL('image/jpeg', 0.88));
+    };
+    img.onerror = () => reject(new Error('โหลดรูปไม่ได้'));
+    img.src = src;
+  });
+}
+
+async function fetchAsDataUrl(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('fetch ' + url);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+async function saveBlobWithPicker(blob, suggestedName) {
+  if (typeof window.showSaveFilePicker === 'function') {
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types: [{ description: 'LoyTong Pack ZIP', accept: { 'application/zip': ['.zip'] } }]
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return handle.name || suggestedName;
+  }
+  downloadBlob(blob, suggestedName);
+  return suggestedName;
+}
+
+async function buildPackPayload() {
+  if (!deck.length) throw new Error('ไม่มีประเภทการ์ด');
+  const cards = [];
+  const images = []; // { fileName, b64 }
+
+  for (let i = 0; i < deck.length; i++) {
+    const c = deck[i];
+    const num = String(i + 1).padStart(2, '0');
+    const fileName = num + '.jpg';
+    let src = c.customArt;
+    if (!src) {
+      try { src = await fetchAsDataUrl(cardArtUrl(c)); }
+      catch { src = null; }
+    }
+    if (src) {
+      const square = await resizeToSquareDataUrl(src, ART_EXPORT_SIZE);
+      images.push({ fileName, b64: square.split(',')[1] });
+    }
+    cards.push({
+      id: i + 1,
+      n: c.n,
+      t: c.t,
+      pop: +c.pop || 0,
+      pol: +c.pol || 0,
+      cost: +c.cost || 0,
+      cond: c.cond || null,
+      failPenType: c.cond === 'not_pay_minus'
+        ? ((c.failPenType === 'coins' || c.failPenType === 'pollution') ? c.failPenType : 'stars')
+        : undefined,
+      failPenAmt: c.cond === 'not_pay_minus'
+        ? Math.max(1, Math.min(9, +c.failPenAmt || 1))
+        : undefined,
+      qty: Math.min(MAX_PRINT_QTY, Math.max(0, +c.qty || 0)),
+      f: c.f || '',
+      event: c.event || null,
+      e: c.e || '🎴',
+      image: 'images/' + fileName
+    });
+  }
+
+  const packName = ($('packName')?.value || '').trim() || 'LoyTong Custom Pack';
+  const pack = {
+    version: 1,
+    name: packName,
+    exportedAt: new Date().toISOString(),
+    settings: readSettingsFromUI(),
+    cards
+  };
+  return { pack, images, packName };
+}
+
+async function exportPackZip() {
+  if (typeof JSZip === 'undefined') throw new Error('ไม่มี JSZip — ตรวจเน็ต');
+  const status = $('status');
+  status.textContent = 'กำลัง Export ZIP…';
+  const { pack, images, packName } = await buildPackPayload();
+  const zip = new JSZip();
+  const imgFolder = zip.folder('images');
+  for (const img of images) imgFolder.file(img.fileName, img.b64, { base64: true });
+  zip.file('pack.json', JSON.stringify(pack, null, 2));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const suggested = sanitizeFileBase(packName) + '.zip';
+  const savedAs = await saveBlobWithPicker(blob, suggested);
+  status.textContent = `Export ZIP แล้ว · ${pack.cards.length} ประเภท · ${savedAs}`;
+}
+
+async function importPackFile(file) {
+  const status = $('status');
+  status.textContent = 'กำลัง Import…';
+  let pack;
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.json')) {
+    pack = JSON.parse(await file.text());
+  } else {
+    if (typeof JSZip === 'undefined') throw new Error('ไม่มี JSZip');
+    const zip = await JSZip.loadAsync(file);
+    const packFile = zip.file('pack.json') || zip.file(/pack\.json$/i)[0];
+    if (!packFile) throw new Error('ไม่พบ pack.json ใน ZIP');
+    pack = JSON.parse(await packFile.async('string'));
+    const cards = pack.cards || [];
+    for (let i = 0; i < cards.length; i++) {
+      const c = cards[i];
+      const path = c.image || ('images/' + String(i + 1).padStart(2, '0') + '.jpg');
+      const zf = zip.file(path) || zip.file(path.replace(/^images\//, ''));
+      if (zf) {
+        const b64 = await zf.async('base64');
+        const mime = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+        c._dataUrl = `data:${mime};base64,${b64}`;
+      }
+    }
+  }
+
+  const list = pack.cards || [];
+  if (!list.length) throw new Error('pack ไม่มีการ์ด');
+
+  if (pack.name && $('packName')) $('packName').value = pack.name;
+  applySettingsToUI(pack.settings);
+
+  deck = [];
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i];
+    let customArt = c._dataUrl || c.customArt || null;
+    if (customArt) {
+      try { customArt = await resizeToSquareDataUrl(customArt, ART_EXPORT_SIZE); }
+      catch (_) {}
+    }
+    deck.push({
+      typeNum: i + 1,
+      n: c.n || ('การ์ด ' + (i + 1)),
+      t: c.t || 'krathong',
+      pop: +c.pop || 0,
+      pol: +c.pol || 0,
+      cost: +c.cost || 0,
+      cond: (c.t === 'event' || c.t === 'external') ? null : (c.cond || 'most'),
+      failPenType: c.failPenType === 'coins' || c.failPenType === 'pollution' ? c.failPenType : 'stars',
+      failPenAmt: Math.max(1, Math.min(9, parseInt(c.failPenAmt, 10) || 1)),
+      qty: Math.min(MAX_PRINT_QTY, Math.max(0, +c.qty || 1)),
+      f: c.f || '',
+      event: c.event || null,
+      e: c.e || '🎴',
+      customArt
+    });
+    ensureFailPenDefaults(deck[deck.length - 1]);
+  }
+  selected = 0;
+  renderEditor();
+  await refreshThumbs();
+  await buildSheets();
+  const setNote = pack.settings ? ' · ใส่ค่าเกมแล้ว' : '';
+  status.textContent = `Import แล้ว · ${deck.length} ประเภท · ${deck.reduce((s, c) => s + (+c.qty || 0), 0)} ใบ${setNote}`;
+}
+
+(async () => {
+  try {
+    deck.forEach(ensureFailPenDefaults);
+    if (printSkin === 'blank') await loadTemplateCardBlank();
+    else await loadTemplateCardV2();
+    syncPrintSkinButton();
+    document.getElementById('status').textContent =
+      `พร้อม · สำรับ ${deck.length} ประเภท · ${deck.reduce((s,c)=>s+c.qty,0)} ใบ · พิมพ์ ${printSkin === 'blank' ? 'เปล่า' : 'V2'}`;
+    renderEditor();
+    await refreshThumbs();
+    await buildSheets();
+  } catch (err) {
+    document.getElementById('status').textContent =
+      'โหลดไม่ได้ — เปิดผ่าน HTTP (ไม่ใช่ file://) · ' + err.message;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>

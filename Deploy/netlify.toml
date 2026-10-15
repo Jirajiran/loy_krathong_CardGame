@@ -1,0 +1,10 @@
+﻿[build]
+  publish = "."
+  command = ""
+
+# Static ship folder — existing files (print-cards.html, Audio/, Asset/)
+# are served before this SPA fallback (do not set force = true).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
