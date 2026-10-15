@@ -1,5 +1,8 @@
 ﻿Asset/ — unified UI + art (menu, gameplay shell, cards, seats)
 
+Local: Deploy/serve.bat junctions Deploy/Asset → this folder.
+Netlify: build copies this folder into Deploy/Asset (see repo-root netlify.toml).
+
   Menu/                 MainMenu.svg, MainMenuBg.svg
   GamePlay/             GamePlaySVG.svg (primary gameplay shell)
   Card/
