@@ -1,6 +1,7 @@
 ﻿[build]
+  # When Netlify "Base directory" = Deploy, ../Asset is repo-root Asset/
   publish = "."
-  command = ""
+  command = "rm -rf Asset && cp -R ../Asset ./Asset"
 
 # Static ship folder — existing files (print-cards.html, Audio/, Asset/)
 # are served before this SPA fallback (do not set force = true).

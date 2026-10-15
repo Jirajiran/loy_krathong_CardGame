@@ -1,0 +1,10 @@
+# Repo-root config (Base directory empty / ".")
+# Prefer this if the site builds from the GitHub repo root.
+[build]
+  publish = "Deploy"
+  command = "rm -rf Deploy/Asset && cp -R Asset Deploy/Asset"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

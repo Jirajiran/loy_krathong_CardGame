@@ -23,5 +23,7 @@ Checklist
   [ ] Credits in UI (x.com/nolawdJi)
 
 itch.io: zip contents of Deploy/ so zip root has index.html
-Netlify: set publish directory to Deploy
-GitHub Pages: publish Deploy/ or copy to docs/
+Netlify (recommended): Base directory empty, use repo-root netlify.toml
+  → build copies Asset/ into Deploy/Asset, publish = Deploy
+  Alt: Base directory = Deploy (uses Deploy/netlify.toml, copies ../Asset)
+GitHub Pages: publish Deploy/ (with Asset copied/linked) or copy to docs/
